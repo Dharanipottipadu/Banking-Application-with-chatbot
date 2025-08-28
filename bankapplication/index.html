@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bootstrap Banking App</title>
+    <!-- Load Tailwind CSS from CDN for a professional and responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use the Inter font for a clean, modern look -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .page-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .page-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .alert-custom.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+        .alert-custom.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
+        /* Chatbot specific styles */
+        #chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        #chat-button {
+            width: 60px;
+            height: 60px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        #chat-button:hover {
+            transform: scale(1.1);
+        }
+        #chat-window {
+            width: 350px;
+            height: 500px;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        #chat-window.active {
+            display: flex;
+        }
+        #chat-header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 1rem;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .message {
+            max-width: 80%;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            line-height: 1.4;
+        }
+        .message.bot {
+            background-color: #e5e7eb;
+            align-self: flex-start;
+        }
+        .message.user {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+        }
+        #chat-input-form {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        #chat-input {
+            flex-grow: 1;
+            border-radius: 9999px;
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            outline: none;
+        }
+        #send-button {
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-[Inter]">
+
+<!-- Main navigation bar using Tailwind for a sticky menu -->
+<nav id="app-navbar" class="fixed top-0 w-full z-50 bg-blue-600 shadow-lg text-white p-4 hidden">
+    <div class="container mx-auto flex justify-between items-center flex-wrap">
+        <a class="text-2xl font-bold flex items-center" href="#">
+            <span class="mr-2">💰</span> My Bank
+        </a>
+        <button class="lg:hidden text-white focus:outline-none" onclick="toggleMobileMenu()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-4 6h4"></path>
+            </svg>
+        </button>
+        <div id="navbarNav" class="hidden lg:flex lg:items-center lg:w-auto w-full mt-4 lg:mt-0">
+            <ul class="lg:flex items-center text-lg lg:space-x-4">
+                <li><a class="hover:text-blue-200 transition-colors duration-200 px-3 py-2 rounded-lg" href="#" onclick="showPage('balance-page')">Balance</a></li>
+                <li><a class="hover:text-blue-200 transition-colors duration-200 px-3 py-2 rounded-lg" href="#" onclick="showPage('transfers-page')">Transfers</a></li>
+                <li><a class="hover:text-blue-200 transition-colors duration-200 px-3 py-2 rounded-lg" href="#" onclick="showPage('history-page')">History</a></li>
+                <li id="admin-nav-item" class="hidden">
+                    <a class="hover:text-blue-200 transition-colors duration-200 px-3 py-2 rounded-lg" href="#" onclick="showPage('admin-page')">Admin</a>
+                </li>
+            </ul>
+        </div>
+        <div class="w-full lg:w-auto mt-4 lg:mt-0 flex flex-col lg:flex-row items-center space-y-2 lg:space-y-0 lg:space-x-4 text-sm">
+            <span class="text-white">
+                Welcome, <span id="user-display" class="font-bold"></span>!
+            </span>
+            <button class="bg-blue-700 hover:bg-blue-800 transition-colors duration-200 text-white font-bold py-2 px-4 rounded-full shadow-md" onclick="logout()">
+                Logout
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Main content area with top padding for the fixed navbar -->
+<div class="container mx-auto mt-20 px-4">
+    
+    <!-- Login Page -->
+    <div id="login-page" class="page-content active">
+        <div class="flex justify-center">
+            <div class="w-full sm:w-2/3 lg:w-1/2">
+                <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+                    <div class="text-center pb-6">
+                        <h2 class="text-3xl font-extrabold text-gray-800">Login to My Bank</h2>
+                    </div>
+                    <div id="login-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                    <form id="login-form">
+                        <div class="mb-4">
+                            <label for="username" class="block text-gray-700 font-medium mb-1">Username</label>
+                            <input type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="username" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="password" class="block text-gray-700 font-medium mb-1">Password</label>
+                            <input type="password" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="password" required>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                            Log In
+                        </button>
+                    </form>
+                    <div class="text-center mt-4">
+                        <p class="text-gray-600">Don't have an account? <a href="#" class="text-blue-600 hover:underline" onclick="showPage('register-page')">Register here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Page -->
+    <div id="register-page" class="page-content">
+        <div class="flex justify-center">
+            <div class="w-full sm:w-2/3 lg:w-1/2">
+                <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+                    <div class="text-center pb-6">
+                        <h2 class="text-3xl font-extrabold text-gray-800">Register for My Bank</h2>
+                        <p class="text-gray-500 mt-2">Create your new account. This will be the admin account.</p>
+                    </div>
+                    <div id="register-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                    <form id="register-form">
+                        <div class="mb-4">
+                            <label for="registerUsername" class="block text-gray-700 font-medium mb-1">Username</label>
+                            <input type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="registerUsername" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="registerPassword" class="block text-gray-700 font-medium mb-1">Password</label>
+                            <input type="password" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="registerPassword" required>
+                        </div>
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                            Register
+                        </button>
+                    </form>
+                    <div class="text-center mt-4">
+                        <p class="text-gray-600">Already have an account? <a href="#" class="text-blue-600 hover:underline" onclick="showPage('login-page')">Login here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Balance Page -->
+    <div id="balance-page" class="page-content">
+        <div class="bg-gray-800 text-white rounded-xl shadow-lg p-6">
+            <h3 class="text-2xl font-bold mb-4">View Balance</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto text-left" id="balance-table">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="py-3 px-4">Account Type</th>
+                            <th class="py-3 px-4">Account Number</th>
+                            <th class="py-3 px-4">Balance ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="balance-table-body">
+                        <!-- Account data will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end mt-4">
+                <img src="https://placehold.co/60x60/343a40/ffffff?text=DBS" alt="DBS Logo Placeholder" class="img-fluid rounded-lg">
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfers, Deposit, and Withdraw Page -->
+    <div id="transfers-page" class="page-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <!-- Make a Transfer Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-2xl font-bold mb-4">Make a Transfer</h3>
+                <div id="transfer-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                <form id="transfer-form">
+                    <div class="mb-4">
+                        <label for="recipient" class="block text-gray-700 font-medium mb-1">Recipient Account</label>
+                        <input type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="recipient" placeholder="Recipient's account number or name" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="transfer-amount" class="block text-gray-700 font-medium mb-1">Amount ($)</label>
+                        <input type="number" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="transfer-amount" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                        Transfer Funds
+                    </button>
+                </form>
+            </div>
+
+            <!-- Deposit Funds Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-2xl font-bold mb-4">Deposit Funds</h3>
+                <div id="deposit-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                <form id="deposit-form">
+                    <div class="mb-6">
+                        <label for="deposit-amount" class="block text-gray-700 font-medium mb-1">Amount ($)</label>
+                        <input type="number" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" id="deposit-amount" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                        Deposit Funds
+                    </button>
+                </form>
+            </div>
+
+            <!-- Withdraw Funds Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-2xl font-bold mb-4">Withdraw Funds</h3>
+                <div id="withdraw-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                <form id="withdraw-form">
+                    <div class="mb-6">
+                        <label for="withdraw-amount" class="block text-gray-700 font-medium mb-1">Amount ($)</label>
+                        <input type="number" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" id="withdraw-amount" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                        Withdraw Funds
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Transaction History Page -->
+    <div id="history-page" class="page-content">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-2xl font-bold mb-4">Transaction History</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto text-left">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="py-3 px-4 rounded-tl-lg">Date</th>
+                            <th class="py-3 px-4">Type</th>
+                            <th class="py-3 px-4">Description</th>
+                            <th class="py-3 px-4 rounded-tr-lg">Amount ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="text-gray-800">
+                        <!-- Transactions will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="no-history-message" class="text-gray-500 text-center mt-4 hidden">No transactions to display.</p>
+        </div>
+    </div>
+
+    <!-- Admin Page -->
+    <div id="admin-page" class="page-content">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-2xl font-bold mb-4">Admin Panel</h3>
+            <p class="text-sm text-gray-500 mb-4">Manage user accounts and view all balances.</p>
+
+            <!-- Table to display all accounts -->
+            <div class="overflow-x-auto mb-6">
+                <table class="w-full table-auto text-left">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="py-3 px-4 rounded-tl-lg">Account Type</th>
+                            <th class="py-3 px-4">Account Number</th>
+                            <th class="py-3 px-4">Current Balance ($)</th>
+                            <th class="py-3 px-4 rounded-tr-lg">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body" class="text-gray-800">
+                        <!-- Account data will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Form to update an account balance -->
+            <form id="update-balance-form" class="p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 class="text-xl font-semibold mb-4">Update an Account</h4>
+                <div id="admin-alert" class="alert-custom mb-4 rounded-lg p-3 hidden"></div>
+                <div class="mb-4">
+                    <label for="accountNumberUpdate" class="block text-gray-700 font-medium mb-1">Account Number</label>
+                    <input type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="accountNumberUpdate" required>
+                </div>
+                <div class="mb-4">
+                    <label for="newBalance" class="block text-gray-700 font-medium mb-1">New Balance ($)</label>
+                    <input type="number" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="newBalance" step="0.01" required>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-white font-bold py-3 px-4 rounded-lg shadow-md">
+                    Update Balance
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Chatbot UI -->
+<div id="chatbot-container" class="hidden">
+    <!-- Chat button -->
+    <div id="chat-button" onclick="toggleChatbot()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-message-circle text-white">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8L22 22l-4.9-1.2A8.38 8.38 0 0 1 12 21.5a8.5 8.5 0 0 1-8.5-8.5 8.5 8.5 0 0 1 8.5-8.5 8.5 8.5 0 0 1 8.5 8.5z"></path>
+        </svg>
+    </div>
+
+    <!-- Chat window -->
+    <div id="chat-window" class="hidden">
+        <div id="chat-header">
+            <h4 class="font-bold">My Bank Assistant</h4>
+            <button onclick="toggleChatbot()" class="text-white focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-2">
+            <!-- Messages will be appended here -->
+        </div>
+        <form id="chat-input-form" class="flex p-4 border-t border-gray-200">
+            <input type="text" id="chat-input" class="flex-grow p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message...">
+            <button type="submit" id="send-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Bootstrap JS bundle for features like the navbar toggler -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<!-- The core JavaScript logic for the application -->
+<script>
+    // --- Mock Client-Side Database with localStorage ---
+    // The database is initialized with a balance and history.
+    const MOCK_DB_INITIAL = {
+        username: null, // Will be set on first login
+        password: null, // Will be set on first login
+        isAdmin: false, // New flag to determine admin status
+        accounts: [
+            { type: 'Current Account', number: '12345678', balance: 1000.00 },
+            { type: 'Saving Account', number: '18902534', balance: 500.00 },
+            { type: 'Multiplie Account', number: '51980312', balance: 1500.00 }
+        ],
+        transactionHistory: [
+            { type: 'deposit', description: 'Initial deposit', amount: 1500.00, date: '2024-01-01' },
+            { type: 'transfer', description: 'Transfer to John Doe', amount: -250.50, date: '2024-02-15' },
+            { type: 'transfer', description: 'Transfer from Jane Smith', amount: 100.00, date: '2024-03-10' }
+        ]
+    };
+
+    // --- Core Application State & Page Management ---
+    let currentPage = 'login-page';
+    let isAdmin = false;
+
+    // Helper function to show alerts
+    function showAlert(elementId, message, type) {
+        const alertDiv = document.getElementById(elementId);
+        alertDiv.textContent = message;
+        alertDiv.className = `alert-custom mb-4 rounded-lg p-3 ${type}`;
+        alertDiv.classList.remove('hidden');
+    }
+
+    // Function to show a specific page and hide others
+    function showPage(pageId) {
+        const pages = document.querySelectorAll('.page-content');
+        pages.forEach(page => {
+            if (page.id === pageId) {
+                page.classList.add('active');
+            } else {
+                page.classList.remove('active');
+            }
+        });
+        currentPage = pageId;
+
+        // Run page-specific functions when a page is shown
+        if (pageId === 'balance-page') {
+            loadBalance();
+        } else if (pageId === 'history-page') {
+            loadTransactionHistory();
+        } else if (pageId === 'admin-page') {
+            loadAdminPanel();
+        }
+    }
+
+    // --- Registration Logic ---
+    document.getElementById('register-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const usernameInput = document.getElementById('registerUsername').value;
+        const passwordInput = document.getElementById('registerPassword').value;
+        const registerAlert = document.getElementById('register-alert');
+        
+        // Hide previous messages
+        registerAlert.classList.add('hidden');
+        registerAlert.classList.remove('success', 'error');
+
+        // Check if credentials are provided
+        if (usernameInput && passwordInput) {
+            let db = JSON.parse(localStorage.getItem('bankingDB'));
+            
+            // Overwrite the initial mock data with the new admin user
+            db = MOCK_DB_INITIAL; // Reset to the initial state
+            db.username = usernameInput;
+            db.password = passwordInput;
+            db.isAdmin = true;
+            localStorage.setItem('bankingDB', JSON.stringify(db));
+
+            showAlert('register-alert', 'Registration successful! Redirecting to login...', 'success');
+            
+            // Wait a moment before redirecting
+            setTimeout(() => {
+                showPage('login-page');
+                // Clear the form
+                document.getElementById('register-form').reset();
+            }, 1500);
+
+        } else {
+            showAlert('register-alert', 'Please provide both a username and password.', 'error');
+        }
+    });
+
+    // --- Authentication Logic ---
+    document.getElementById('login-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const usernameInput = document.getElementById('username').value;
+        const passwordInput = document.getElementById('password').value;
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const loginAlert = document.getElementById('login-alert');
+        
+        // Hide previous messages
+        loginAlert.classList.add('hidden');
+        loginAlert.classList.remove('success', 'error');
+
+        if (db && usernameInput === db.username && passwordInput === db.password) {
+            isAdmin = db.isAdmin; // Set global admin state
+
+            document.getElementById('app-navbar').classList.remove('hidden'); // Show the navbar
+            document.getElementById('chatbot-container').classList.remove('hidden'); // Show the chatbot
+            document.getElementById('user-display').textContent = db.username;
+            
+            // Show or hide the admin link based on the isAdmin flag
+            if (isAdmin) {
+                document.getElementById('admin-nav-item').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-nav-item').classList.add('hidden');
+            }
+
+            showPage('balance-page'); // Redirect to the balance page
+            addBotMessage('Hello there! How can I assist you today?');
+        } else {
+            showAlert('login-alert', 'Invalid username or password.', 'error');
+        }
+    });
+
+    function logout() {
+        // Clear all pages and hide the navbar and chatbot
+        document.getElementById('app-navbar').classList.add('hidden');
+        document.getElementById('chatbot-container').classList.add('hidden');
+        showPage('login-page');
+        isAdmin = false; // Reset admin state on logout
+    }
+
+    function toggleMobileMenu() {
+        const navMenu = document.getElementById('navbarNav');
+        navMenu.classList.toggle('hidden');
+        navMenu.classList.toggle('flex');
+    }
+
+    // --- CRUD Operations and Page-Specific Functions ---
+
+    // R - Read Account Balance
+    function loadBalance() {
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const tableBody = document.getElementById('balance-table-body');
+        tableBody.innerHTML = ''; // Clear previous data
+
+        if (db && db.accounts) {
+            db.accounts.forEach(account => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-700';
+                row.innerHTML = `
+                    <td class="py-3 px-4">${account.type}</td>
+                    <td class="py-3 px-4">${account.number}</td>
+                    <td class="py-3 px-4">$${account.balance.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    }
+
+    // U & C - Update Balance and Create new Transaction
+    document.getElementById('transfer-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const recipient = document.getElementById('recipient').value;
+        const amount = parseFloat(document.getElementById('transfer-amount').value);
+        const alertDiv = document.getElementById('transfer-alert');
+        
+        // Hide the alert initially
+        alertDiv.classList.add('hidden');
+        alertDiv.classList.remove('success', 'error');
+
+        const sourceAccount = db.accounts[0];
+
+        if (amount > 0 && sourceAccount.balance >= amount) {
+            sourceAccount.balance -= amount;
+            
+            // Create the new transaction record
+            db.transactionHistory.unshift({
+                type: 'transfer',
+                description: `Transfer to ${recipient}`,
+                amount: -amount,
+                date: new Date().toLocaleDateString()
+            });
+
+            // Update localStorage
+            localStorage.setItem('bankingDB', JSON.stringify(db));
+
+            showAlert('transfer-alert', `Successfully transferred $${amount.toFixed(2)} to ${recipient}.`, 'success');
+
+            // Reset form fields
+            document.getElementById('transfer-form').reset();
+        } else {
+            showAlert('transfer-alert', 'Transfer failed. Insufficient funds or invalid amount.', 'error');
+        }
+    });
+
+    // C & U - Deposit Funds
+    document.getElementById('deposit-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const amount = parseFloat(document.getElementById('deposit-amount').value);
+        const alertDiv = document.getElementById('deposit-alert');
+        
+        alertDiv.classList.add('hidden');
+        alertDiv.classList.remove('success', 'error');
+
+        const mainAccount = db.accounts[0];
+
+        if (amount > 0) {
+            mainAccount.balance += amount;
+            
+            db.transactionHistory.unshift({
+                type: 'deposit',
+                description: `Deposit`,
+                amount: amount,
+                date: new Date().toLocaleDateString()
+            });
+
+            localStorage.setItem('bankingDB', JSON.stringify(db));
+
+            showAlert('deposit-alert', `Successfully deposited $${amount.toFixed(2)}.`, 'success');
+            document.getElementById('deposit-form').reset();
+        } else {
+            showAlert('deposit-alert', 'Deposit failed. Invalid amount.', 'error');
+        }
+    });
+
+    // C & U - Withdraw Funds
+    document.getElementById('withdraw-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const amount = parseFloat(document.getElementById('withdraw-amount').value);
+        const alertDiv = document.getElementById('withdraw-alert');
+        
+        alertDiv.classList.add('hidden');
+        alertDiv.classList.remove('success', 'error');
+
+        const mainAccount = db.accounts[0];
+
+        if (amount > 0 && mainAccount.balance >= amount) {
+            mainAccount.balance -= amount;
+            
+            db.transactionHistory.unshift({
+                type: 'withdrawal',
+                description: `Withdrawal`,
+                amount: -amount,
+                date: new Date().toLocaleDateString()
+            });
+
+            localStorage.setItem('bankingDB', JSON.stringify(db));
+
+            showAlert('withdraw-alert', `Successfully withdrew $${amount.toFixed(2)}.`, 'success');
+            document.getElementById('withdraw-form').reset();
+        } else {
+            showAlert('withdraw-alert', 'Withdrawal failed. Insufficient funds or invalid amount.', 'error');
+        }
+    });
+
+    // R - Read Transaction History
+    function loadTransactionHistory() {
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const tableBody = document.getElementById('history-table-body');
+        const noHistoryMsg = document.getElementById('no-history-message');
+        tableBody.innerHTML = ''; // Clear previous history
+
+        if (!db || db.transactionHistory.length === 0) {
+            noHistoryMsg.classList.remove('hidden');
+            return;
+        }
+
+        noHistoryMsg.classList.add('hidden');
+        db.transactionHistory.forEach(tx => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-200';
+            const amountClass = tx.amount >= 0 ? 'text-green-600' : 'text-red-600';
+            const sign = tx.amount >= 0 ? '+' : '';
+            
+            row.innerHTML = `
+                <td class="py-3 px-4">${tx.date}</td>
+                <td class="py-3 px-4">${tx.type}</td>
+                <td class="py-3 px-4">${tx.description}</td>
+                <td class="py-3 px-4 ${amountClass}">${sign}${Math.abs(tx.amount).toFixed(2)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // A - Admin functions
+    function loadAdminPanel() {
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const tableBody = document.getElementById('admin-table-body');
+        tableBody.innerHTML = ''; // Clear previous data
+
+        if (db && db.accounts) {
+            db.accounts.forEach(account => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200';
+                row.innerHTML = `
+                    <td class="py-3 px-4">${account.type}</td>
+                    <td class="py-3 px-4">${account.number}</td>
+                    <td class="py-3 px-4">$${account.balance.toFixed(2)}</td>
+                    <td class="py-3 px-4">
+                        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm" onclick="populateUpdateForm('${account.number}', ${account.balance})">Edit</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    }
+
+    function populateUpdateForm(accountNumber, balance) {
+        document.getElementById('accountNumberUpdate').value = accountNumber;
+        document.getElementById('newBalance').value = balance;
+    }
+
+    document.getElementById('update-balance-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        const accountNumberToUpdate = document.getElementById('accountNumberUpdate').value;
+        const newBalance = parseFloat(document.getElementById('newBalance').value);
+        const adminAlert = document.getElementById('admin-alert');
+        
+        // Hide the alert initially
+        adminAlert.classList.add('hidden');
+        adminAlert.classList.remove('success', 'error');
+
+        const accountToUpdate = db.accounts.find(acc => acc.number === accountNumberToUpdate);
+
+        if (accountToUpdate && !isNaN(newBalance)) {
+            const oldBalance = accountToUpdate.balance;
+            accountToUpdate.balance = newBalance;
+            
+            // Add a new transaction for the admin action
+            db.transactionHistory.unshift({
+                type: 'admin update',
+                description: `Admin updated balance for account ${accountNumberToUpdate}`,
+                amount: newBalance - oldBalance,
+                date: new Date().toLocaleDateString()
+            });
+
+            localStorage.setItem('bankingDB', JSON.stringify(db));
+
+            showAlert('admin-alert', `Successfully updated balance for account ${accountNumberToUpdate}.`, 'success');
+
+            loadAdminPanel(); // Re-render the table
+        } else {
+            showAlert('admin-alert', 'Failed to update balance. Account not found or invalid balance.', 'error');
+        }
+    });
+
+    // --- Chatbot Logic ---
+    function toggleChatbot() {
+        const chatWindow = document.getElementById('chat-window');
+        chatWindow.classList.toggle('hidden');
+        chatWindow.classList.toggle('active');
+        if (chatWindow.classList.contains('active')) {
+             // Scroll to the bottom when the window opens
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function addMessage(message, type) {
+        const messagesContainer = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        messagesContainer.appendChild(messageDiv);
+        // Scroll to the latest message
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function addBotMessage(message) {
+        addMessage(message, 'bot');
+    }
+
+    function addUserMessage(message) {
+        addMessage(message, 'user');
+    }
+
+    document.getElementById('chat-input-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const inputField = document.getElementById('chat-input');
+        const userMessage = inputField.value.trim();
+        if (userMessage === '') return;
+        
+        addUserMessage(userMessage);
+        handleChatbotMessage(userMessage);
+        inputField.value = ''; // Clear the input
+    });
+
+    function handleChatbotMessage(userMessage) {
+        const lowerCaseMessage = userMessage.toLowerCase();
+        let botResponse = 'I\'m sorry, I don\'t understand that. Please ask about your balance, transfers, history, deposit, or how to get help.';
+
+        if (lowerCaseMessage.includes('hello') || lowerCaseMessage.includes('hi')) {
+            botResponse = 'Hello! I\'m your bank assistant. How can I help you today?';
+        } else if (lowerCaseMessage.includes('balance') || lowerCaseMessage.includes('check balance')) {
+            showPage('balance-page');
+            botResponse = 'Redirecting you to the Balance page now. You can view your account balances there.';
+        } else if (lowerCaseMessage.includes('transfer') || lowerCaseMessage.includes('send money')) {
+            showPage('transfers-page');
+            botResponse = 'Taking you to the Transfers page. You can make a new transfer from here.';
+        } else if (lowerCaseMessage.includes('history') || lowerCaseMessage.includes('transactions')) {
+            showPage('history-page');
+            botResponse = 'I\'m showing your transaction history now. All your past transactions are listed there.';
+        } else if (lowerCaseMessage.includes('deposit')) {
+            showPage('transfers-page');
+            botResponse = 'I\'m taking you to the Transfers page. You can make a deposit here.';
+        } else if (lowerCaseMessage.includes('withdraw')) {
+            showPage('transfers-page');
+            botResponse = 'I\'m taking you to the Transfers page. You can make a withdrawal here.';
+        } else if (lowerCaseMessage.includes('admin')) {
+            if (isAdmin) {
+                showPage('admin-page');
+                botResponse = 'Welcome, Admin! I\'m taking you to the Admin Panel now.';
+            } else {
+                botResponse = 'I\'m sorry, the Admin Panel is restricted to administrators only.';
+            }
+        } else if (lowerCaseMessage.includes('thank') || lowerCaseMessage.includes('thanks')) {
+            botResponse = 'You\'re welcome! Is there anything else?';
+        }
+        
+        // Add a slight delay for a more natural feel
+        setTimeout(() => {
+            addBotMessage(botResponse);
+        }, 500);
+    }
+
+
+    // Initial page load logic
+    window.onload = function() {
+        const db = JSON.parse(localStorage.getItem('bankingDB'));
+        if (!db) {
+            localStorage.setItem('bankingDB', JSON.stringify(MOCK_DB_INITIAL));
+        }
+        // If no user is registered, show the registration page. Otherwise, show the login page.
+        if (db && db.username === null) {
+            showPage('register-page');
+        } else {
+            showPage('login-page');
+        }
+    };
+</script>
+
+</body>
+</html>
